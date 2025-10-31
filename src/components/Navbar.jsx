@@ -7,8 +7,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import AppsIcon from "@mui/icons-material/Apps";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 export default function Navbar() {
-  // previously the navbar opened an AuthModal; switch to a dedicated
-  // /login page so auth UI is a separate route/page.
 
   return (
     <nav className="keep-nav">

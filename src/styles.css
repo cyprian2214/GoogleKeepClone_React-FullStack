@@ -153,7 +153,7 @@ input:focus {
 
 .form-container {
   position: relative;
-  top: 20px; /* below navbar (64px) with some breathing room */
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -513,7 +513,7 @@ form.expanded .note-icons {
 }
 
 .keep-note-actions {
-  display: flex; /* show actions by default like screenshot */
+  display: flex;
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
