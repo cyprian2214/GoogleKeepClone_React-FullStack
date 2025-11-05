@@ -6,11 +6,17 @@ import NoteCard from "./components/NoteCard";
 import Modal from "./components/Modal";
 import Copyright from "./components/Copyright";
 import { auth, db, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, doc, setDoc, deleteDoc, serverTimestamp } from "./firebase";
+import { api } from './services/api';
+import { LoadingSpinner } from './components/LoadingSpinner';
 
 export default function App() {
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [loadingActions, setLoadingActions] = useState({});
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
@@ -22,29 +28,67 @@ export default function App() {
   useEffect(() => {
     let unsubNotes = null;
     if (user) {
-      const q = query(collection(db, "notes"), where("userId", "==", user.uid), orderBy("updatedAt", "desc"));
-      unsubNotes = onSnapshot(q, (snapshot) => {
-        const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setNotes(docs);
-      });
+      setLoadingNotes(true);
+      fetchNotes();
     } else {
       setNotes([]);
     }
     return () => unsubNotes && unsubNotes();
   }, [user]);
 
+  const fetchNotes = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      if (useBackend) {
+        const notes = await api.getNotes(user.uid);
+        setNotes(notes);
+      } else {
+        const q = query(collection(db, "notes"), where("userId", "==", user.uid), orderBy("updatedAt", "desc"));
+        unsubNotes = onSnapshot(q, (snapshot) => {
+          const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setNotes(docs);
+        });
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setLoadingNotes(false);
+    }
+  };
+
   async function addNote({ title, content }) {
     if (!user) {
       alert("Please sign in to create notes.");
       return;
     }
-    await addDoc(collection(db, "notes"), {
-      userId: user.uid,
-      title,
-      content,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    setLoading(true);
+    try {
+      if (useBackend) {
+        const newNote = await api.createNote({
+          ...{ title, content },
+          userId: user.uid
+        });
+        setNotes(prev => [newNote, ...prev]);
+      } else {
+        await addDoc(collection(db, "notes"), {
+          userId: user.uid,
+          title,
+          content,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setLoadingActions(prev => ({
+        ...prev,
+        ['new']: false
+      }));
+    }
   }
 
   async function updateNote(id, { title, content }) {
@@ -66,24 +110,36 @@ export default function App() {
     await deleteDoc(ref);
   }
 
+  const setNoteLoading = (noteId, isLoading) => {
+    setLoadingActions(prev => ({
+      ...prev,
+      [noteId]: isLoading
+    }));
+  };
+
   return (
     <div className="keep-app">
       <Navbar user={user} />
       <div className="keep-content">
         <Sidebar />
         <main className="keep-main">
-          <NoteInput onAdd={addNote} />
-          <div className="keep-notes-grid">
-            {notes.map((note) => (
-              <div key={note.id} onDoubleClick={() => setActiveNote(note)}>
-                <NoteCard
-                  note={note}
-                  onDelete={() => deleteNoteById(note.id)}
-                  onEdit={() => setActiveNote(note)}
-                />
-              </div>
-            ))}
-          </div>
+          <NoteInput onSubmit={addNote} isLoading={loadingActions['new']} />
+          {loadingNotes ? (
+            <LoadingSpinner />
+          ) : (
+            <div className="keep-notes-grid">
+              {notes.map((note) => (
+                <div key={note.id} onDoubleClick={() => setActiveNote(note)}>
+                  <NoteCard
+                    note={note}
+                    onDelete={() => deleteNoteById(note.id)}
+                    onEdit={() => setActiveNote(note)}
+                    isLoading={loadingActions[note.id]}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
@@ -101,3 +157,5 @@ export default function App() {
     </div>
   );
 }
+
+const useBackend = import.meta.env.VITE_USE_BACKEND === 'rest';
