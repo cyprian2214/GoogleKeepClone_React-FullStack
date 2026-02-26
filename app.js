@@ -643,6 +643,13 @@ class App {
     });
   }
 
+  isReminderOverdue(reminder) {
+    if (!reminder || !reminder.remindAt) return false;
+    const remindAtMs = new Date(reminder.remindAt).getTime();
+    if (Number.isNaN(remindAtMs)) return false;
+    return remindAtMs <= Date.now();
+  }
+
   async loadReminders() {
     if (!this.isLoggedIn()) {
       this.allReminders = [];
@@ -723,7 +730,7 @@ class App {
           <span class="material-symbols-outlined check-circle">check_circle</span>
           <div class="title">${note.title || ""}</div>
           <div class="text">${note.text || ""}</div>
-          ${this.remindersByNoteId.has(note.id) ? `<div class="reminder-chip"><span class="material-symbols-outlined">notifications</span>${this.formatReminderChip(this.remindersByNoteId.get(note.id).remindAt)}</div>` : ""}
+          ${this.remindersByNoteId.has(note.id) ? `<div class="reminder-chip ${this.isReminderOverdue(this.remindersByNoteId.get(note.id)) ? "overdue" : ""}"><span class="material-symbols-outlined">notifications</span>${this.isReminderOverdue(this.remindersByNoteId.get(note.id)) ? "Overdue • " : ""}${this.formatReminderChip(this.remindersByNoteId.get(note.id).remindAt)}</div>` : ""}
           <div class="note-footer">
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">add_alert</span><span class="tooltip-text">Remind me</span></div>
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">person_add</span><span class="tooltip-text">Collaborator</span></div>

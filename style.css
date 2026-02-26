@@ -5,6 +5,12 @@
   padding: 0;
   box-sizing: border-box;
   font-family: "Roboto", sans-serif;
+  cursor: default;
+}
+
+input,
+textarea {
+  cursor: text;
 }
 
 .material-symbols-outlined {
@@ -281,6 +287,11 @@ main.sidebar-expanded .notes, .notes {
 .reminder-chip .material-symbols-outlined {
   font-size: 0.9rem;
   padding: 0;
+}
+
+.reminder-chip.overdue {
+  background: #fce8e6;
+  color: #b3261e;
 }
 
 .note .note-footer {
