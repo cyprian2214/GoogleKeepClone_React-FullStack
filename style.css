@@ -114,11 +114,14 @@ input:focus {
   overflow-x: hidden;
   transition: 0.8s;
   height: 100%;
+  z-index: 45;
+  background: #fff;
 }
 .sidebar-hover {
     box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
     0 2px 6px 2px rgba(60, 64, 67, 0.149);
     background: white;
+    z-index: 46;
 }
 .active {
   background-color: #fef0c3;
@@ -256,6 +259,8 @@ main.sidebar-expanded .notes, .notes {
   justify-content: center;
   flex-wrap: wrap;
   padding: 0 50px;
+  position: relative;
+  z-index: 1;
 }
 
 .note {
@@ -436,6 +441,7 @@ main.sidebar-expanded .notes, .notes {
   width: 100%;
   height: 100%;
   visibility: hidden;
+  z-index: 80;
 }
 
 .modal .modal-content {
@@ -721,6 +727,18 @@ body.dark-mode .tooltip-text {
     display: none;
   }
 
+  .sidebar.sidebar-hover {
+    width: 220px !important;
+  }
+
+  .sidebar.sidebar-hover .sidebar-text,
+  .sidebar:hover .sidebar-text {
+    display: block;
+    margin-left: 10px;
+    width: auto;
+    font-size: 0.82rem;
+  }
+
   .sidebar-item .material-symbols-outlined {
     margin-left: 10px;
   }
@@ -772,9 +790,32 @@ body.dark-mode .tooltip-text {
     margin-left: auto;
   }
 
+  .form .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
   .form .form-actions .icons {
-    flex-wrap: wrap;
-    gap: 2px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .form .form-actions .icons .material-symbols-outlined {
+    padding: 6px;
+    font-size: 0.95rem;
+  }
+
+  .form .form-actions .close-btn {
+    align-self: stretch;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    padding: 8px 0;
+    text-transform: lowercase;
+    background: #f8f9fa;
   }
 
   .note {

@@ -362,7 +362,7 @@ class App {
     if (isInactiveFormClickedOn) {
       this.openActiveForm();
     } else if (!isInactiveFormClickedOn && !isActiveFormClickedOn) {
-      void this.addNote({ title, text });
+      void this.addNote({ title, text }, { showAuthMessage: false, notifyErrors: false });
       this.closeActiveForm();
     }
   }
