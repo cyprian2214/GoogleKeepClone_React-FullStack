@@ -60,6 +60,28 @@ How it works:
 - Notes with reminders are shown in the `Reminders` sidebar section.
 - Deleted notes move to `Trash`.
 
+## New Updates
+### `add_alert` Button Behavior
+The reminder (`add_alert`) button is now fully functional in the UI:
+- On a note card:
+  - Opens the reminder popover.
+  - Saves reminder for that existing note.
+- In note edit modal:
+  - Opens the same reminder popover.
+  - Saves reminder for the selected note.
+- In active new-note form:
+  - Opens reminder popover.
+  - On save, creates the note first (if needed), then creates reminder.
+
+Reminder popover fields:
+- Date/time (`datetime-local`)
+- Optional reminder message
+
+Reminder display updates:
+- Notes with reminders appear in `Reminders` sidebar section.
+- Reminder chip shows scheduled time.
+- If reminder time has passed, chip changes to overdue state (`Overdue • ...`).
+
 ## API Documentation
 
 ### Health
