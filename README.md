@@ -154,31 +154,26 @@ All notes endpoints require `Authorization: Bearer <token>`.
 Import the collection from:
 - `postman/GoogleKeepClone.postman_collection.json`
 
-## Deploy to Heroku
-1. Create Heroku app and add Postgres:
-```bash
-heroku create your-app-name
-heroku addons:create heroku-postgresql:mini
-```
+## Deploy for Free (Render + Neon)
+This repository now includes `render.yaml` for Render Blueprint deploys.
 
-2. Set required env vars:
-```bash
-heroku config:set JWT_SECRET=your_long_random_secret
-```
+### 1. Create a Neon database (free)
+1. Create a Neon project and database.
+2. Copy the connection string and use it as `DATABASE_URL`.
+3. Ensure the URL includes SSL mode, for example `?sslmode=require`.
 
-3. Deploy:
-```bash
-git push heroku main
-```
+### 2. Deploy to Render (free web service)
+1. In Render, choose `New` -> `Blueprint`.
+2. Connect this GitHub repository.
+3. Render reads `render.yaml` and creates the web service.
+4. In Render service environment variables, set:
+   - `DATABASE_URL` (from Neon)
+   - `JWT_SECRET` (long random string)
+
+### 3. Automatic deploys
+- `render.yaml` sets `autoDeploy: true`.
+- Every push to `main` triggers a new deploy on Render.
 
 Notes:
-- `Procfile` runs migrations automatically during release (`npm run prisma:deploy`).
-- Heroku provides `DATABASE_URL` and `PORT` automatically.
-
-### GitHub Actions Auto Deploy
-This repo includes `.github/workflows/deploy-heroku.yml` to deploy on every push to `main`.
-
-Add these GitHub repository secrets:
-- `HEROKU_API_KEY`
-- `HEROKU_APP_NAME`
-- `HEROKU_EMAIL`
+- Start command runs migrations automatically: `npm run prisma:deploy && npm start`.
+- Render provides `PORT` automatically.

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: googlekeepclone-api
+    runtime: node
+    repo: https://github.com/cyprian2214/GoogleKeepClone_React-FullStack
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm run prisma:deploy && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
