@@ -56,18 +56,9 @@ This backend supports scheduled reminders for notes.
 
 How it works:
 - Create reminder records through API.
-- A background worker polls for due reminders.
-- On due reminders, an email is sent through SMTP.
-- Sent reminders are marked as `SENT`.
-- Old sent reminders are cleaned up automatically.
-
-Required env vars for reminders:
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USER`
-- `SMTP_PASS`
-- `SMTP_FROM`
-- Optional: `REMINDER_POLL_INTERVAL_MS`, `REMINDER_RETENTION_DAYS`
+- Frontend polls reminders and shows in-app due notifications.
+- Notes with reminders are shown in the `Reminders` sidebar section.
+- Deleted notes move to `Trash`.
 
 ## API Documentation
 
@@ -165,7 +156,6 @@ All reminder endpoints require `Authorization: Bearer <token>`.
 {
   "noteId": "note-uuid",
   "remindAt": "2026-02-28T10:00:00.000Z",
-  "email": "you@example.com",
   "message": "Review this note"
 }
 ```
@@ -173,7 +163,6 @@ All reminder endpoints require `Authorization: Bearer <token>`.
 - Validation:
   - `noteId` is required and must belong to authenticated user
   - `remindAt` must be a valid future ISO date
-  - `email` is optional (defaults to authenticated user's email)
 
 #### List reminders
 - `GET /api/reminders`
@@ -207,7 +196,6 @@ All reminder endpoints require `Authorization: Bearer <token>`.
   "id": "uuid",
   "noteId": "uuid",
   "userId": "uuid",
-  "email": "string",
   "message": "string | null",
   "remindAt": "Date",
   "status": "PENDING | SENT | FAILED | CANCELED",

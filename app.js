@@ -1,6 +1,7 @@
 // Full updated app.js
 const API_BASE = "https://googlekeepclone-api.onrender.com";
 const AUTH_TOKEN_KEY = "authToken";
+const NOTIFIED_REMINDERS_KEY = "notifiedReminderIds";
 
 const getToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
 
@@ -37,6 +38,7 @@ async function apiRequest(path, options = {}) {
 class App {
   constructor() {
     this.notes = [];
+    this.remindersByNoteId = new Map();
     this.selectedNoteId = "";
     this.miniSidebar = true;
     this.sidebarPinned = false;
@@ -64,7 +66,10 @@ class App {
     this.$reminderStatus = document.querySelector("#reminder-status");
     this.$reminderSaveBtn = document.querySelector("#reminder-save-btn");
     this.$reminderCancelBtn = document.querySelector("#reminder-cancel-btn");
+    this.$reminderToastStack = document.querySelector("#reminder-toast-stack");
     this.reminderContext = null;
+    this.reminderCheckTimer = null;
+    this.notifiedReminderIds = new Set(JSON.parse(localStorage.getItem(NOTIFIED_REMINDERS_KEY) || "[]"));
 
     this.addEventListeners();
     this.updateAccountAction();
@@ -74,8 +79,14 @@ class App {
   clearSession() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     this.notes = [];
+    this.remindersByNoteId = new Map();
+    this.stopReminderNotifications();
     this.updateAccountAction();
     this.displayNotes();
+  }
+
+  saveNotifiedReminderIds() {
+    localStorage.setItem(NOTIFIED_REMINDERS_KEY, JSON.stringify(Array.from(this.notifiedReminderIds)));
   }
 
   addEventListeners() {
@@ -89,6 +100,7 @@ class App {
       void this.closeModal(event);
       this.openModal(event);
       void this.handleArchiving(event);
+      void this.handleDeleting(event);
     });
 
     this.$form.addEventListener("submit", (event) => {
@@ -230,6 +242,59 @@ class App {
   updateAccountAction() {
     if (!this.$accountActionButton) return;
     this.$accountActionButton.textContent = this.isLoggedIn() ? "Logout" : "Login";
+  }
+
+  showReminderToast(reminder) {
+    if (!this.$reminderToastStack) return;
+
+    const toast = document.createElement("div");
+    toast.className = "reminder-toast";
+    toast.innerHTML = `
+      <div class="reminder-toast-title">Reminder due</div>
+      <div class="reminder-toast-text">${(reminder.note?.title || "Untitled note")}</div>
+      <div class="reminder-toast-text">${reminder.message || ""}</div>
+    `;
+
+    this.$reminderToastStack.appendChild(toast);
+    setTimeout(() => toast.remove(), 7000);
+  }
+
+  async checkDueReminders() {
+    if (!this.isLoggedIn()) return;
+    try {
+      const reminders = await apiRequest("/api/reminders");
+      const now = Date.now();
+      const statuses = new Set(["PENDING", "FAILED", "SENT"]);
+
+      for (const reminder of reminders || []) {
+        if (!statuses.has(reminder.status)) continue;
+        if (this.notifiedReminderIds.has(reminder.id)) continue;
+        const remindAtMs = new Date(reminder.remindAt).getTime();
+        if (Number.isNaN(remindAtMs) || remindAtMs > now) continue;
+
+        this.showReminderToast(reminder);
+        this.notifiedReminderIds.add(reminder.id);
+      }
+      this.saveNotifiedReminderIds();
+    } catch (error) {
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+      }
+    }
+  }
+
+  startReminderNotifications() {
+    if (!this.isLoggedIn() || this.reminderCheckTimer) return;
+    this.checkDueReminders();
+    this.reminderCheckTimer = setInterval(() => {
+      this.checkDueReminders();
+    }, 30000);
+  }
+
+  stopReminderNotifications() {
+    if (!this.reminderCheckTimer) return;
+    clearInterval(this.reminderCheckTimer);
+    this.reminderCheckTimer = null;
   }
 
   ensureAuthenticated(showMessage = false) {
@@ -395,6 +460,7 @@ class App {
         })
       });
       this.setReminderStatus("Reminder saved.", "success");
+      await this.loadReminders();
       setTimeout(() => this.closeReminderPopover(), 700);
     } catch (error) {
       if (error.message === "UNAUTHORIZED") {
@@ -474,6 +540,32 @@ class App {
     }
   }
 
+  async handleDeleting(event) {
+    const $selectedNote = event.target.closest(".note");
+    if ($selectedNote && event.target.closest(".delete-note")) {
+      if (!this.ensureAuthenticated(false)) return;
+      const id = $selectedNote.id;
+      const note = this.notes.find(n => n.id === id);
+      if (!note) return;
+
+      try {
+        const saved = await apiRequest(`/api/notes/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({ deleted: !note.deleted })
+        });
+        if (!saved) return;
+        this.notes = this.notes.map(n => (n.id === id ? this.toNote(saved) : n));
+        this.displayNotes();
+      } catch (error) {
+        if (error.message === "UNAUTHORIZED") {
+          this.clearSession();
+          return;
+        }
+        alert(error.message);
+      }
+    }
+  }
+
   async addNote({ title, text }, options = {}) {
     const showAuthMessage = options.showAuthMessage !== false;
     const notifyErrors = options.notifyErrors !== false;
@@ -531,6 +623,38 @@ class App {
     this.displayNotes();
   }
 
+  formatReminderChip(dateValue) {
+    const date = new Date(dateValue);
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  async loadReminders() {
+    if (!this.isLoggedIn()) {
+      this.remindersByNoteId = new Map();
+      return;
+    }
+    try {
+      const reminders = await apiRequest("/api/reminders?status=PENDING");
+      const map = new Map();
+      for (const reminder of reminders || []) {
+        const current = map.get(reminder.noteId);
+        if (!current || new Date(reminder.remindAt) < new Date(current.remindAt)) {
+          map.set(reminder.noteId, reminder);
+        }
+      }
+      this.remindersByNoteId = map;
+    } catch (error) {
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+      }
+    }
+  }
+
   async loadNotes() {
     if (!this.isLoggedIn()) {
       this.notes = [];
@@ -541,6 +665,8 @@ class App {
       const data = await apiRequest("/api/notes");
       if (!data) return;
       this.notes = data.map((note) => this.toNote(note));
+      await this.loadReminders();
+      this.startReminderNotifications();
       this.displayNotes();
     } catch (error) {
       if (error.message === "UNAUTHORIZED") {
@@ -557,6 +683,7 @@ class App {
       title: note.title,
       text: note.content,
       archived: note.archived,
+      deleted: note.deleted,
       pinned: note.pinned,
       color: note.color,
       createdAt: note.createdAt,
@@ -567,9 +694,13 @@ class App {
   displayNotes(filteredNotes = null) {
     let notesToRender = filteredNotes || this.notes;
     if (this.selectedSection === "notes") {
-      notesToRender = notesToRender.filter((n) => !n.archived);
+      notesToRender = notesToRender.filter((n) => !n.archived && !n.deleted);
     } else if (this.selectedSection === "archive") {
-      notesToRender = notesToRender.filter((n) => n.archived);
+      notesToRender = notesToRender.filter((n) => n.archived && !n.deleted);
+    } else if (this.selectedSection === "reminders") {
+      notesToRender = notesToRender.filter((n) => !n.deleted && this.remindersByNoteId.has(n.id));
+    } else if (this.selectedSection === "trash") {
+      notesToRender = notesToRender.filter((n) => n.deleted);
     }
 
     this.$notes.innerHTML = notesToRender
@@ -579,12 +710,14 @@ class App {
           <span class="material-symbols-outlined check-circle">check_circle</span>
           <div class="title">${note.title || ""}</div>
           <div class="text">${note.text || ""}</div>
+          ${this.remindersByNoteId.has(note.id) ? `<div class="reminder-chip"><span class="material-symbols-outlined">notifications</span>${this.formatReminderChip(this.remindersByNoteId.get(note.id).remindAt)}</div>` : ""}
           <div class="note-footer">
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">add_alert</span><span class="tooltip-text">Remind me</span></div>
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">person_add</span><span class="tooltip-text">Collaborator</span></div>
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">palette</span><span class="tooltip-text">Change Color</span></div>
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">image</span><span class="tooltip-text">Add Image</span></div>
             <div class="tooltip archive"><span class="material-symbols-outlined hover small-icon">archive</span><span class="tooltip-text">Archive</span></div>
+            <div class="tooltip delete-note"><span class="material-symbols-outlined hover small-icon">${note.deleted ? "restore_from_trash" : "delete"}</span><span class="tooltip-text">${note.deleted ? "Restore" : "Move to Trash"}</span></div>
             <div class="tooltip"><span class="material-symbols-outlined hover small-icon">more_vert</span><span class="tooltip-text">More</span></div>
           </div>
         </div>`

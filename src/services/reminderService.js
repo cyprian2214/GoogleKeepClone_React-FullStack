@@ -31,7 +31,7 @@ const cancelReminder = async (userId, reminderId) => {
     where: {
       id: reminderId,
       userId,
-      status: { in: ["PENDING", "FAILED"] }
+      status: { in: ["PENDING", "FAILED", "SENT"] }
     },
     data: { status: "CANCELED" }
   });
@@ -40,59 +40,8 @@ const cancelReminder = async (userId, reminderId) => {
     throw new ApiError(404, "Reminder not found");
   }
 };
-
-const getDuePendingReminders = async (limit = 20) => {
-  return prisma.reminder.findMany({
-    where: {
-      status: "PENDING",
-      remindAt: { lte: new Date() }
-    },
-    include: {
-      note: true,
-      user: true
-    },
-    orderBy: { remindAt: "asc" },
-    take: limit
-  });
-};
-
-const markReminderSent = async (id) => {
-  await prisma.reminder.update({
-    where: { id },
-    data: {
-      status: "SENT",
-      sentAt: new Date(),
-      lastError: null
-    }
-  });
-};
-
-const markReminderFailed = async (id, errorMessage) => {
-  await prisma.reminder.update({
-    where: { id },
-    data: {
-      status: "FAILED",
-      lastError: String(errorMessage).slice(0, 1000)
-    }
-  });
-};
-
-const cleanupOldSentReminders = async (retentionDays) => {
-  const before = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-  await prisma.reminder.deleteMany({
-    where: {
-      status: "SENT",
-      sentAt: { lt: before }
-    }
-  });
-};
-
 module.exports = {
   createReminder,
   listReminders,
-  cancelReminder,
-  getDuePendingReminders,
-  markReminderSent,
-  markReminderFailed,
-  cleanupOldSentReminders
+  cancelReminder
 };

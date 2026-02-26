@@ -22,6 +22,7 @@ const createNote = async (req, res) => {
   const color = parseOptionalColor(req.body?.color) ?? "#ffffff";
   const pinned = parseOptionalBoolean(req.body?.pinned, "pinned") ?? false;
   const archived = parseOptionalBoolean(req.body?.archived, "archived") ?? false;
+  const deleted = parseOptionalBoolean(req.body?.deleted, "deleted") ?? false;
 
   if (!title && !content) {
     throw new ApiError(400, "Title or content is required");
@@ -32,7 +33,8 @@ const createNote = async (req, res) => {
     content,
     color,
     pinned,
-    archived
+    archived,
+    deleted
   });
 
   res.status(201).json(note);
@@ -47,6 +49,7 @@ const updateNote = async (req, res) => {
   if ("color" in body) data.color = parseOptionalColor(body.color);
   if ("pinned" in body) data.pinned = parseOptionalBoolean(body.pinned, "pinned");
   if ("archived" in body) data.archived = parseOptionalBoolean(body.archived, "archived");
+  if ("deleted" in body) data.deleted = parseOptionalBoolean(body.deleted, "deleted");
 
   if (!Object.keys(data).length) {
     throw new ApiError(400, "At least one field must be provided");

@@ -2,13 +2,15 @@ const prisma = require("../lib/prisma");
 const ApiError = require("../utils/apiError");
 
 const listNotes = async (userId, query) => {
-  const { archived, pinned, q } = query;
+  const { archived, pinned, deleted, q } = query;
   const where = { userId };
 
   if (archived === "true") where.archived = true;
   if (archived === "false") where.archived = false;
   if (pinned === "true") where.pinned = true;
   if (pinned === "false") where.pinned = false;
+  if (deleted === "true") where.deleted = true;
+  if (deleted === "false") where.deleted = false;
 
   if (q && typeof q === "string") {
     where.OR = [

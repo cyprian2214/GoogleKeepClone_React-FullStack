@@ -16,6 +16,7 @@ model Note {
   color     String?  @default("#ffffff")
   pinned    Boolean  @default(false)
   archived  Boolean  @default(false)
+  deleted   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
