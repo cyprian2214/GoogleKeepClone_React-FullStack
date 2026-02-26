@@ -55,8 +55,18 @@ nav {
   height: 64px;
   border-bottom: 1px solid #dadce0;
   padding: 8px;
-  margin: 0 10px;
+  margin: 0;
   color: #5f6368;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+}
+
+main {
+  padding-top: 64px;
 }
 
 .logo-area {
@@ -631,4 +641,166 @@ body.dark-mode .sidebar-item .sidebar-text {
 
 body.dark-mode .tooltip-text {
   background-color: #444;
+}
+
+/* responsive layout */
+@media (max-width: 1024px) {
+  .search-area {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .notes {
+    margin-left: 0;
+    padding: 0 16px;
+  }
+
+  main.sidebar-expanded .notes, .notes {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  nav {
+    height: 56px;
+    padding: 6px 8px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .logo-area {
+    min-width: 120px;
+  }
+
+  .search-area {
+    width: auto;
+    max-width: none;
+    height: 40px;
+    background: transparent;
+    border-radius: 50%;
+    margin-left: auto;
+  }
+
+  .search-area input {
+    display: none;
+  }
+
+  .search-area span {
+    margin-left: 0;
+  }
+
+  .settings-area,
+  .profile-actions-area {
+    display: flex;
+    gap: 4px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    width: 72px;
+    height: calc(100vh - 56px);
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 0;
+    padding-top: 6px;
+    border-right: 1px solid #e0e1e0;
+    border-bottom: none;
+    background: #fff;
+    z-index: 20;
+  }
+
+  .sidebar .sidebar-item {
+    padding: 3px 0;
+    border-radius: 0;
+  }
+
+  .sidebar-item .sidebar-text {
+    display: none;
+  }
+
+  .sidebar-item .material-symbols-outlined {
+    margin-left: 10px;
+  }
+
+  .form-container {
+    margin: 14px 10px 14px 82px;
+    max-width: none;
+  }
+
+  .notes {
+    margin-left: 82px;
+    justify-content: flex-start;
+    padding: 0 10px 10px 0;
+  }
+
+  main.sidebar-expanded .notes, .notes {
+    margin-left: 82px;
+  }
+
+  .note .note-footer {
+    visibility: visible;
+  }
+
+  .modal .modal-content {
+    width: calc(100% - 20px);
+    top: 50%;
+  }
+
+  .login-card {
+    width: min(92vw, 360px);
+    padding: 22px;
+  }
+
+  .reminder-popover {
+    width: min(92vw, 320px);
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding-top: 56px;
+  }
+
+  .logo-text {
+    font-size: 1rem;
+  }
+
+  .profile-actions-area {
+    margin-left: auto;
+  }
+
+  .form .form-actions .icons {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .note {
+    width: calc(100% - 10px);
+    min-width: 0;
+  }
+
+  .form-container,
+  .notes,
+  main.sidebar-expanded .notes {
+    margin-left: 78px;
+  }
+
+  .note .title,
+  .note .text,
+  .reminder-chip {
+    margin-left: 10px;
+  }
+
+  .reminder-toast-stack {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+  }
+
+  .reminder-toast {
+    width: 100%;
+  }
 }
