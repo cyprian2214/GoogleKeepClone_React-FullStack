@@ -1,0 +1,131 @@
+{
+  "info": {
+    "name": "Google Keep Clone API",
+    "description": "Postman collection for the Google Keep Clone backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "token", "value": "" },
+    { "key": "noteId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"you@example.com\",\n  \"password\": \"secret123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"you@example.com\",\n  \"password\": \"secret123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "List Notes",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notes",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notes"]
+        }
+      }
+    },
+    {
+      "name": "Get Note By Id",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notes", "{{noteId}}"]
+        }
+      }
+    },
+    {
+      "name": "Create Note",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Meeting\",\n  \"content\": \"Discuss roadmap\",\n  \"color\": \"#fff8e1\",\n  \"pinned\": true,\n  \"archived\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notes",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notes"]
+        }
+      }
+    },
+    {
+      "name": "Update Note",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated title\",\n  \"content\": \"Updated content\",\n  \"color\": \"#e8f5e9\",\n  \"pinned\": false,\n  \"archived\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notes", "{{noteId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete Note",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notes", "{{noteId}}"]
+        }
+      }
+    }
+  ]
+}
