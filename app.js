@@ -1,5 +1,5 @@
 // Full updated app.js
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://googlekeepclone-api.onrender.com";
 const AUTH_TOKEN_KEY = "authToken";
 
 const getToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
