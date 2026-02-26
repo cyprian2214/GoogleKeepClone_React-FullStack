@@ -38,6 +38,7 @@ async function apiRequest(path, options = {}) {
 class App {
   constructor() {
     this.notes = [];
+    this.allReminders = [];
     this.remindersByNoteId = new Map();
     this.selectedNoteId = "";
     this.miniSidebar = true;
@@ -69,6 +70,7 @@ class App {
     this.$reminderToastStack = document.querySelector("#reminder-toast-stack");
     this.reminderContext = null;
     this.reminderCheckTimer = null;
+    this.reminderSyncTimer = null;
     this.notifiedReminderIds = new Set(JSON.parse(localStorage.getItem(NOTIFIED_REMINDERS_KEY) || "[]"));
 
     this.addEventListeners();
@@ -79,6 +81,7 @@ class App {
   clearSession() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     this.notes = [];
+    this.allReminders = [];
     this.remindersByNoteId = new Map();
     this.stopReminderNotifications();
     this.updateAccountAction();
@@ -261,40 +264,47 @@ class App {
 
   async checkDueReminders() {
     if (!this.isLoggedIn()) return;
-    try {
-      const reminders = await apiRequest("/api/reminders");
-      const now = Date.now();
-      const statuses = new Set(["PENDING", "FAILED", "SENT"]);
+    const now = Date.now();
+    const statuses = new Set(["PENDING", "FAILED", "SENT"]);
+    for (const reminder of this.allReminders || []) {
+      if (!statuses.has(reminder.status)) continue;
+      if (this.notifiedReminderIds.has(reminder.id)) continue;
+      const remindAtMs = new Date(reminder.remindAt).getTime();
+      if (Number.isNaN(remindAtMs) || remindAtMs > now) continue;
 
-      for (const reminder of reminders || []) {
-        if (!statuses.has(reminder.status)) continue;
-        if (this.notifiedReminderIds.has(reminder.id)) continue;
-        const remindAtMs = new Date(reminder.remindAt).getTime();
-        if (Number.isNaN(remindAtMs) || remindAtMs > now) continue;
-
-        this.showReminderToast(reminder);
-        this.notifiedReminderIds.add(reminder.id);
-      }
-      this.saveNotifiedReminderIds();
-    } catch (error) {
-      if (error.message === "UNAUTHORIZED") {
-        this.clearSession();
-      }
+      this.showReminderToast(reminder);
+      this.notifiedReminderIds.add(reminder.id);
     }
+    this.saveNotifiedReminderIds();
   }
 
   startReminderNotifications() {
-    if (!this.isLoggedIn() || this.reminderCheckTimer) return;
+    if (!this.isLoggedIn()) return;
+
+    if (!this.reminderCheckTimer) {
+      this.reminderCheckTimer = setInterval(() => {
+        this.checkDueReminders();
+      }, 1000);
+    }
+
+    if (!this.reminderSyncTimer) {
+      this.reminderSyncTimer = setInterval(() => {
+        this.loadReminders();
+      }, 120000);
+    }
+
     this.checkDueReminders();
-    this.reminderCheckTimer = setInterval(() => {
-      this.checkDueReminders();
-    }, 30000);
   }
 
   stopReminderNotifications() {
-    if (!this.reminderCheckTimer) return;
-    clearInterval(this.reminderCheckTimer);
-    this.reminderCheckTimer = null;
+    if (this.reminderCheckTimer) {
+      clearInterval(this.reminderCheckTimer);
+      this.reminderCheckTimer = null;
+    }
+    if (this.reminderSyncTimer) {
+      clearInterval(this.reminderSyncTimer);
+      this.reminderSyncTimer = null;
+    }
   }
 
   ensureAuthenticated(showMessage = false) {
@@ -635,19 +645,22 @@ class App {
 
   async loadReminders() {
     if (!this.isLoggedIn()) {
+      this.allReminders = [];
       this.remindersByNoteId = new Map();
       return;
     }
     try {
       const reminders = await apiRequest("/api/reminders?status=PENDING");
+      this.allReminders = reminders || [];
       const map = new Map();
-      for (const reminder of reminders || []) {
+      for (const reminder of this.allReminders) {
         const current = map.get(reminder.noteId);
         if (!current || new Date(reminder.remindAt) < new Date(current.remindAt)) {
           map.set(reminder.noteId, reminder);
         }
       }
       this.remindersByNoteId = map;
+      this.checkDueReminders();
     } catch (error) {
       if (error.message === "UNAUTHORIZED") {
         this.clearSession();
