@@ -51,6 +51,24 @@ All note endpoints require a valid JWT.
 - Login: `POST /api/auth/login`
 - Use header: `Authorization: Bearer <token>`
 
+## Reminder Feature
+This backend supports scheduled reminders for notes.
+
+How it works:
+- Create reminder records through API.
+- A background worker polls for due reminders.
+- On due reminders, an email is sent through SMTP.
+- Sent reminders are marked as `SENT`.
+- Old sent reminders are cleaned up automatically.
+
+Required env vars for reminders:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- Optional: `REMINDER_POLL_INTERVAL_MS`, `REMINDER_RETENTION_DAYS`
+
 ## API Documentation
 
 ### Health
@@ -136,6 +154,39 @@ All notes endpoints require `Authorization: Bearer <token>`.
 - `DELETE /api/notes/:id`
 - Response: `204 No Content` or `404` if not found
 
+### Reminders
+
+All reminder endpoints require `Authorization: Bearer <token>`.
+
+#### Create reminder
+- `POST /api/reminders`
+- Body:
+```json
+{
+  "noteId": "note-uuid",
+  "remindAt": "2026-02-28T10:00:00.000Z",
+  "email": "you@example.com",
+  "message": "Review this note"
+}
+```
+- Response: `201 Created` reminder
+- Validation:
+  - `noteId` is required and must belong to authenticated user
+  - `remindAt` must be a valid future ISO date
+  - `email` is optional (defaults to authenticated user's email)
+
+#### List reminders
+- `GET /api/reminders`
+- Optional query:
+  - `status=PENDING|SENT|FAILED|CANCELED`
+- Response: `200 OK` array of reminders with note details
+
+#### Cancel reminder
+- `DELETE /api/reminders/:id`
+- Behavior:
+  - Changes reminder status to `CANCELED` (for pending/failed reminders)
+- Response: `204 No Content`
+
 ## Note Model
 ```json
 {
@@ -145,6 +196,23 @@ All notes endpoints require `Authorization: Bearer <token>`.
   "color": "string",
   "pinned": "boolean",
   "archived": "boolean",
+  "createdAt": "Date",
+  "updatedAt": "Date"
+}
+```
+
+## Reminder Model
+```json
+{
+  "id": "uuid",
+  "noteId": "uuid",
+  "userId": "uuid",
+  "email": "string",
+  "message": "string | null",
+  "remindAt": "Date",
+  "status": "PENDING | SENT | FAILED | CANCELED",
+  "sentAt": "Date | null",
+  "lastError": "string | null",
   "createdAt": "Date",
   "updatedAt": "Date"
 }
@@ -177,3 +245,11 @@ This repository now includes `render.yaml` for Render Blueprint deploys.
 Notes:
 - Start command runs migrations automatically: `npm run prisma:deploy && npm start`.
 - Render provides `PORT` automatically.
+
+## Code Structure
+- `src/routes`: API endpoints
+- `src/controllers`: request/response handling
+- `src/services`: business logic (auth, notes, reminders, email, worker)
+- `src/utils`: helpers and validators
+- `src/middleware`: auth and error handling
+- `src/lib`: shared Prisma client

@@ -266,6 +266,17 @@
           </div>
         </div>
       </div>
+
+      <div class="reminder-popover" id="reminder-popover">
+        <div class="reminder-popover-title">Set reminder</div>
+        <input type="datetime-local" id="reminder-datetime" />
+        <input type="text" id="reminder-message" placeholder="Message (optional)" />
+        <div class="reminder-popover-status" id="reminder-status"></div>
+        <div class="reminder-popover-actions">
+          <button type="button" id="reminder-cancel-btn">Cancel</button>
+          <button type="button" id="reminder-save-btn">Save</button>
+        </div>
+      </div>
     </main>
 
     <script src="app.js"></script>

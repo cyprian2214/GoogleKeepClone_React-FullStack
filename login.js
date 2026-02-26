@@ -1,11 +1,6 @@
 const API_BASE = "https://googlekeepclone-api.onrender.com";
 const AUTH_TOKEN_KEY = "authToken";
 
-const existingToken = localStorage.getItem(AUTH_TOKEN_KEY);
-if (existingToken) {
-  window.location.href = "index.html";
-}
-
 const form = document.getElementById("login-form");
 const registerBtn = document.getElementById("register-btn");
 const message = document.getElementById("login-message");
@@ -13,6 +8,20 @@ const message = document.getElementById("login-message");
 const setMessage = (text, type = "") => {
   message.textContent = text;
   message.className = `login-message ${type}`.trim();
+};
+
+const hasValidToken = async (token) => {
+  if (!token) return false;
+  try {
+    const response = await fetch(`${API_BASE}/api/notes`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.ok;
+  } catch (_) {
+    return false;
+  }
 };
 
 const submitAuth = async (path) => {
@@ -52,3 +61,16 @@ form.addEventListener("submit", (event) => {
 registerBtn.addEventListener("click", () => {
   submitAuth("/api/auth/register");
 });
+
+(async () => {
+  const existingToken = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!existingToken) return;
+
+  const valid = await hasValidToken(existingToken);
+  if (valid) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+})();

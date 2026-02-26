@@ -286,6 +286,76 @@ main.sidebar-expanded .notes, .notes {
   visibility: hidden;
 }
 
+.reminder-popover {
+  position: fixed;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(60, 64, 67, 0.22);
+  z-index: 30;
+  display: none;
+}
+
+.reminder-popover.open {
+  display: block;
+}
+
+.reminder-popover-title {
+  font-size: 0.92rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.reminder-popover input {
+  width: 100%;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+}
+
+.reminder-popover-status {
+  min-height: 18px;
+  font-size: 0.8rem;
+  color: #5f6368;
+  margin-bottom: 6px;
+}
+
+.reminder-popover-status.error {
+  color: #d93025;
+}
+
+.reminder-popover-status.success {
+  color: #188038;
+}
+
+.reminder-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reminder-popover-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+#reminder-cancel-btn {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+#reminder-save-btn {
+  background: #1a73e8;
+  color: #fff;
+}
+
 .modal {
   position: fixed;
   top: 0;

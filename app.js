@@ -18,7 +18,7 @@ async function apiRequest(path, options = {}) {
   if (!response.ok) {
     if (response.status === 401) {
       localStorage.removeItem(AUTH_TOKEN_KEY);
-      return;
+      throw new Error("UNAUTHORIZED");
     }
     let message = `Request failed: ${response.status}`;
     try {
@@ -58,14 +58,33 @@ class App {
     this.$accountIcon = document.querySelector("#account-icon");
     this.$accountMenu = document.querySelector("#account-menu");
     this.$accountActionButton = document.querySelector("#account-action-btn");
+    this.$reminderPopover = document.querySelector("#reminder-popover");
+    this.$reminderDatetime = document.querySelector("#reminder-datetime");
+    this.$reminderMessage = document.querySelector("#reminder-message");
+    this.$reminderStatus = document.querySelector("#reminder-status");
+    this.$reminderSaveBtn = document.querySelector("#reminder-save-btn");
+    this.$reminderCancelBtn = document.querySelector("#reminder-cancel-btn");
+    this.reminderContext = null;
 
     this.addEventListeners();
     this.updateAccountAction();
     this.loadNotes();
   }
 
+  clearSession() {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    this.notes = [];
+    this.updateAccountAction();
+    this.displayNotes();
+  }
+
   addEventListeners() {
-    document.body.addEventListener("click", (event) => {
+    document.body.addEventListener("click", async (event) => {
+      if (this.$reminderPopover && this.$reminderPopover.contains(event.target)) return;
+
+      const reminderHandled = await this.handleReminderClick(event);
+      if (reminderHandled) return;
+
       this.handleFormClick(event);
       void this.closeModal(event);
       this.openModal(event);
@@ -119,7 +138,6 @@ class App {
 
       const action = icon.innerText.trim();
       switch (action) {
-        case "add_alert": alert("Reminder feature not ready."); break;
         case "person_add": alert("Collaborator coming soon."); break;
         case "palette": alert("Color change not implemented."); break;
         case "image": alert("Image upload coming soon."); break;
@@ -145,6 +163,16 @@ class App {
       }
       if (this.$accountMenu && !this.$accountMenu.contains(e.target) && e.target !== this.$accountIcon) {
         this.$accountMenu.style.display = "none";
+      }
+      const icon = e.target.closest(".material-symbols-outlined");
+      const isReminderIcon = icon && icon.innerText.trim() === "add_alert";
+      if (
+        this.$reminderPopover &&
+        this.$reminderPopover.classList.contains("open") &&
+        !this.$reminderPopover.contains(e.target) &&
+        !isReminderIcon
+      ) {
+        this.closeReminderPopover();
       }
     });
 
@@ -174,9 +202,23 @@ class App {
     if (this.$accountActionButton) {
       this.$accountActionButton.addEventListener("click", () => {
         if (this.isLoggedIn()) {
-          localStorage.removeItem(AUTH_TOKEN_KEY);
+          this.clearSession();
+          this.closeReminderPopover();
+          return;
         }
         window.location.href = "login.html";
+      });
+    }
+
+    if (this.$reminderCancelBtn) {
+      this.$reminderCancelBtn.addEventListener("click", () => {
+        this.closeReminderPopover();
+      });
+    }
+
+    if (this.$reminderSaveBtn) {
+      this.$reminderSaveBtn.addEventListener("click", () => {
+        void this.submitReminder();
       });
     }
   }
@@ -265,12 +307,133 @@ class App {
 
   openModal(event) {
     const $selectedNote = event.target.closest(".note");
-    if ($selectedNote && !event.target.closest(".archive")) {
+    if ($selectedNote && !event.target.closest(".note-footer")) {
       this.selectedNoteId = $selectedNote.id;
       this.$modalTitle.value = $selectedNote.children[1].innerHTML;
       this.$modalText.value = $selectedNote.children[2].innerHTML;
       this.$modal.classList.add("open-modal");
     }
+  }
+
+  parseReminderDateInput(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    if (date.getTime() <= Date.now()) return null;
+    return date;
+  }
+
+  formatDateTimeLocal(date) {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  }
+
+  setReminderStatus(message, type = "") {
+    if (!this.$reminderStatus) return;
+    this.$reminderStatus.textContent = message || "";
+    this.$reminderStatus.className = `reminder-popover-status ${type}`.trim();
+  }
+
+  openReminderPopover(event, context) {
+    if (!this.$reminderPopover) return;
+    this.reminderContext = context;
+    this.$reminderMessage.value = "";
+    this.$reminderDatetime.value = this.formatDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000));
+    this.setReminderStatus("");
+
+    const margin = 12;
+    const maxLeft = window.innerWidth - 300;
+    const maxTop = window.innerHeight - 250;
+    const left = Math.max(margin, Math.min(event.clientX, maxLeft));
+    const top = Math.max(margin, Math.min(event.clientY, maxTop));
+    this.$reminderPopover.style.left = `${left}px`;
+    this.$reminderPopover.style.top = `${top}px`;
+    this.$reminderPopover.classList.add("open");
+  }
+
+  closeReminderPopover() {
+    if (!this.$reminderPopover) return;
+    this.$reminderPopover.classList.remove("open");
+    this.reminderContext = null;
+    this.setReminderStatus("");
+  }
+
+  async submitReminder() {
+    if (!this.reminderContext) return;
+    if (!this.isLoggedIn()) {
+      this.setReminderStatus("Log in first from Accounts.", "error");
+      return;
+    }
+
+    let noteId = this.reminderContext.noteId;
+    if (this.reminderContext.type === "draft") {
+      const created = await this.addNote(
+        { title: this.$noteTitle.value, text: this.$noteText.value },
+        { showAuthMessage: false, notifyErrors: false }
+      );
+      if (!created) {
+        this.setReminderStatus("Add note title or content first.", "error");
+        return;
+      }
+      noteId = created.id;
+      this.closeActiveForm();
+    }
+
+    const remindAt = this.parseReminderDateInput(this.$reminderDatetime.value);
+    if (!remindAt) {
+      this.setReminderStatus("Choose a valid future date/time.", "error");
+      return;
+    }
+
+    try {
+      await apiRequest("/api/reminders", {
+        method: "POST",
+        body: JSON.stringify({
+          noteId,
+          remindAt: remindAt.toISOString(),
+          message: this.$reminderMessage.value.trim() || null
+        })
+      });
+      this.setReminderStatus("Reminder saved.", "success");
+      setTimeout(() => this.closeReminderPopover(), 700);
+    } catch (error) {
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+        this.setReminderStatus("Session expired. Log in again.", "error");
+        return;
+      }
+      this.setReminderStatus(error.message || "Could not save reminder.", "error");
+    }
+  }
+
+  async handleReminderClick(event) {
+    const icon = event.target.closest(".material-symbols-outlined");
+    if (!icon || icon.innerText.trim() !== "add_alert") return false;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.isLoggedIn()) {
+      this.$accountMenu.style.display = "block";
+      return true;
+    }
+
+    const noteCard = event.target.closest(".note");
+    if (noteCard) {
+      this.openReminderPopover(event, { type: "note", noteId: noteCard.id });
+      return true;
+    }
+
+    if (this.$modal.contains(event.target) && this.selectedNoteId) {
+      this.openReminderPopover(event, { type: "modal", noteId: this.selectedNoteId });
+      return true;
+    }
+
+    if (this.$activeForm.contains(event.target)) {
+      this.openReminderPopover(event, { type: "draft" });
+      return true;
+    }
+
+    return true;
   }
 
   async closeModal(event) {
@@ -302,13 +465,19 @@ class App {
         this.notes = this.notes.map(n => (n.id === id ? this.toNote(saved) : n));
         this.render();
       } catch (error) {
+        if (error.message === "UNAUTHORIZED") {
+          this.clearSession();
+          return;
+        }
         alert(error.message);
       }
     }
   }
 
-  async addNote({ title, text }) {
-    if (!this.ensureAuthenticated(true)) return;
+  async addNote({ title, text }, options = {}) {
+    const showAuthMessage = options.showAuthMessage !== false;
+    const notifyErrors = options.notifyErrors !== false;
+    if (!this.ensureAuthenticated(showAuthMessage)) return;
     const trimmedText = (text || "").trim();
     const trimmedTitle = (title || "").trim();
     if (!trimmedText && !trimmedTitle) return;
@@ -322,10 +491,17 @@ class App {
         })
       });
       if (!created) return;
-      this.notes = [this.toNote(created), ...this.notes];
+      const mapped = this.toNote(created);
+      this.notes = [mapped, ...this.notes];
       this.render();
+      return mapped;
     } catch (error) {
-      alert(error.message);
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+        if (notifyErrors) alert("Please log in to save notes.");
+        return;
+      }
+      if (notifyErrors) alert(error.message);
     }
   }
 
@@ -343,6 +519,10 @@ class App {
       this.notes = this.notes.map((note) => (note.id === id ? this.toNote(updated) : note));
       this.render();
     } catch (error) {
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+        return;
+      }
       alert(error.message);
     }
   }
@@ -363,6 +543,10 @@ class App {
       this.notes = data.map((note) => this.toNote(note));
       this.displayNotes();
     } catch (error) {
+      if (error.message === "UNAUTHORIZED") {
+        this.clearSession();
+        return;
+      }
       alert(error.message);
     }
   }

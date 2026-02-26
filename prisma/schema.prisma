@@ -20,6 +20,7 @@ model Note {
   updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminders Reminder[]
 }
 
 model User {
@@ -29,4 +30,28 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   notes        Note[]
+  reminders    Reminder[]
+}
+
+model Reminder {
+  id         String         @id @default(uuid())
+  noteId     String
+  userId     String
+  email      String
+  message    String?
+  remindAt   DateTime
+  status     ReminderStatus @default(PENDING)
+  sentAt     DateTime?
+  lastError  String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  note       Note           @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELED
 }
